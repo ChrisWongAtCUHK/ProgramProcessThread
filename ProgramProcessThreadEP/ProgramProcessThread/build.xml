@@ -7,6 +7,7 @@
 		<property name="project-name"       		value="ProgramProcessThread"/>
         <property name="t1-main-class"  			value="demo.thread.ThreadExample1"/>
 		<property name="t2-main-class"  			value="demo.thread.ThreadExample2"/>
+		<property name="transfer-main-class"  		value="demo.criticalsection.Transfer"/>
         <property name="base-dir"           		value="bin"/>
 		<property name="deploy-dir"          	 	value="deploy"/>
         <property name="javadoc-dir"       			value="doc"/>
@@ -76,7 +77,10 @@
 	<target name="runt2" depends="compile">
         <java classname="${t2-main-class}" classpath="${base-dir}" />
     </target>
-
+	<target name="runtr" depends="compile">
+        <java classname="${transfer-main-class}" classpath="${base-dir}" />
+    </target>
+	
 	<!-- Run by jar -->
 	<target name="jart1" depends="build">
 		<java fork="true" failonerror="true" classname="${t1-main-class}"  >
