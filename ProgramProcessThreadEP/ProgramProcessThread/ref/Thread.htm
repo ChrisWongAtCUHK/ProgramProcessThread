@@ -1,0 +1,604 @@
+
+<!-- saved from url=(0048)http://programming.im.ncnu.edu.tw/J_Chapter9.htm -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=Big5">
+
+<title>Thread(執行緒)</title>
+</head>
+<body>
+<h3>Program,Process,Thread</h3>
+<p>在介紹Thread之前,我們必須先把Program和Process這兩個觀念作一個釐清。
+</p><ul>
+<li>Program:一群程式碼的集合,用以解決特定的問題。以物件導向的觀念來類比,相當於Class。
+</li><li>Process:由Program所產生的執行個體,一個Program可以同時執行多次,產生多個Process。以物件導向的觀念來類比,相當於Object。每一個Process又由以下兩個東西組成
+<ul>
+<li>一個Memory Space。相當於Object的variable,不同Process的Memory Space也不同,彼此看不到對方的Memory Space。
+</li><li>一個以上的Thread。Thread代表從某個起始點開始(例如main),到目前為止所有函數的呼叫路徑,以及這些呼叫路徑上所用到的區域變數。當然程式的執行狀態,除了紀錄在主記憶體外,CPU內部的暫存器(如Program Counter, Stack Pointer, Program Status Word等)也需要一起紀錄。所以Thread又由下面兩項組成
+<ul>
+<li>Stack:紀錄函數呼叫路徑,以及這些函數所用到的區域變數
+</li><li>目前CPU的狀態</li> 
+</ul></li>
+</ul></li>
+</ul>
+<ul></ul>
+<p>由上面的描述中,我們在歸納Thread的重點如下
+</p><ul>
+<li>一個Process可以有多個Thread。
+</li><li>同一個Process內的Thread使用相同的Memory Space,但這些Thread各自擁有其Stack。換句話說,Thread能透過reference存取到相同的Object,但是local variable卻是各自獨立的。
+</li><li>作業系統會根據Thread的優先權以及已經用掉的CPU時間,在不同的Thread作切換,以讓各個Thread都有機會執行。</li>
+</ul>
+<h3>如何產生Thread</h3>
+<p>Java以java.lang.Thread這個類別來表示Thread。Class Thread有兩個Constructor:
+</p><ol>
+<li>Thread()
+</li><li>Thread(Runnable)</li>
+</ol>
+<p>第一個Constrctor沒有參數,第二個需要一個Runnable物件當參數。Runnable是一個interface,定義於java.lang內,其宣告為
+</p><pre><font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>interface</b></font> Runnable {
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>void</b></font> run();
+}
+</pre>
+<p>使用Thread()產生的Thread,其進入點為Thread裡的run();使用Thread(Runnable)產生的Thread,其進入點為Runnable物件裡的run()。當run()結束時,這個Thread也就結束了;這和main()結束有相同的效果。其用法以下面範例說明:</p>
+<pre><font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>class</b></font> ThreadExample1 <font color="#2e8b57"><b>extends</b></font> Thread {
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>void</b></font> run() { <font color="#0000ff">// override Thread's run()</font>
+        System.out.println(<font color="#ff00ff">"Here is the starting point of Thread."</font>);
+        <font color="#804040"><b>for</b></font> (;;) { <font color="#0000ff">// infinite loop to print message</font>
+            System.out.println(<font color="#ff00ff">"User Created Thread"</font>);
+        }
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>static</b></font> <font color="#2e8b57"><b>void</b></font> main(String[] argv) {
+        Thread t = <font color="#804040"><b>new</b></font> ThreadExample1(); <font color="#0000ff">// 產生Thread物件</font>
+        t.start(); <font color="#0000ff">// 開始執行t.run()</font>
+        <font color="#804040"><b>for</b></font> (;;) {
+            System.out.println(<font color="#ff00ff">"Main Thread"</font>);
+        }
+    }
+}
+</pre>
+<p>以上程式執行後,螢幕上會持續印出"User Created Thread"或"Main Thread"的字樣。利用Runnable的寫法如下</p>
+<pre><font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>class</b></font> ThreadExample2 <font color="#2e8b57"><b>implements</b></font> Runnable {
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>void</b></font> run() { <font color="#0000ff">// implements Runnable run()</font>
+        System.out.println(<font color="#ff00ff">"Here is the starting point of Thread."</font>);
+        <font color="#804040"><b>for</b></font> (;;) { <font color="#0000ff">// infinite loop to print message</font>
+            System.out.println(<font color="#ff00ff">"User Created Thread"</font>);
+        }
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>static</b></font> <font color="#2e8b57"><b>void</b></font> main(String[] argv) {
+        Thread t = <font color="#804040"><b>new</b></font> Thread(<font color="#804040"><b>new</b></font> ThreadExample2()); <font color="#0000ff">// 產生Thread物件</font>
+        t.start(); <font color="#0000ff">// 開始執行Runnable.run();</font>
+        <font color="#804040"><b>for</b></font> (;;) {
+            System.out.println(<font color="#ff00ff">"Main Thread"</font>);
+        }
+    }
+}
+</pre>
+<h3>Thread的優先權與影響資源的相關方法</h3>
+<p>Thread.setPriority(int)可以設定Thread的優先權,數字越大優先權越高。Thread定義了3個相關的static final variable
+</p><pre><font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>static</b></font> <font color="#2e8b57"><b>final</b></font> <font color="#2e8b57"><b>int</b></font> MAX_PRIORITY <font color="#ff00ff">10</font>
+<font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>static</b></font> <font color="#2e8b57"><b>final</b></font> <font color="#2e8b57"><b>int</b></font> MIN_PRIORITY <font color="#ff00ff">1</font>
+<font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>static</b></font> <font color="#2e8b57"><b>final</b></font> <font color="#2e8b57"><b>int</b></font> NORM_PRIORITY <font color="#ff00ff">5</font> 
+</pre>
+<p>要提醒讀者的是,優先權高的Thread其佔有CPU的機會比較高,但優先權低的也都會有機會執行到。其他有關Thread執行的方法有:
+</p><ul>
+<li>yield():先讓給別的Thread執行
+</li><li>sleep(int time):休息time mini second(1/1000秒)
+</li><li>join():呼叫ThreadA.join()的執行緒會等到ThreadA結束後,才能繼續執行</li>
+</ul>
+<p>你可以執行下面的程式,看看yield()的效果</p>
+<pre><font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>class</b></font> ThreadExample1 <font color="#2e8b57"><b>extends</b></font> Thread {
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>void</b></font> run() { <font color="#0000ff">// overwrite Thread's run()</font>
+        System.out.println(<font color="#ff00ff">"Here is the starting point of Thread."</font>);
+        <font color="#804040"><b>for</b></font> (;;) { <font color="#0000ff">// infinite loop to print message</font>
+            System.out.println(<font color="#ff00ff">"User Created Thread"</font>);
+            yield();
+        }
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>static</b></font> <font color="#2e8b57"><b>void</b></font> main(String[] argv) {
+        Thread t = <font color="#804040"><b>new</b></font> ThreadExample1(); <font color="#0000ff">// 產生Thread物件</font>
+        t.start(); <font color="#0000ff">// 開始執行t.run()</font>
+        <font color="#804040"><b>for</b></font> (;;) {
+            System.out.println(<font color="#ff00ff">"Main Thread"</font>);
+            yield();
+        }
+    }
+}
+</pre>
+<p>觀看join的效果</p>
+<pre><font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>class</b></font> JoinExample <font color="#2e8b57"><b>extends</b></font> Thread {
+    String myId;
+    <font color="#2e8b57"><b>public</b></font> JoinExample(String id) {
+        myId = id;
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>void</b></font> run() { <font color="#0000ff">// overwrite Thread's run()</font>
+	<font color="#804040"><b>for</b></font> (<font color="#2e8b57"><b>int</b></font> i=<font color="#ff00ff">0</font>; i &lt; <font color="#ff00ff">500</font>; i++) {
+            System.out.println(myId+<font color="#ff00ff">" Thread"</font>);
+        }
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>static</b></font> <font color="#2e8b57"><b>void</b></font> main(String[] argv) {
+        Thread t1 = <font color="#804040"><b>new</b></font> JoinExample(<font color="#ff00ff">"T1"</font>); <font color="#0000ff">// 產生Thread物件</font>
+        Thread t2 = <font color="#804040"><b>new</b></font> JoinExample(<font color="#ff00ff">"T2"</font>); <font color="#0000ff">// 產生Thread物件</font>
+        t1.start(); <font color="#0000ff">// 開始執行t1.run()</font>
+        t2.start();
+        <font color="#804040"><b>try</b></font> {
+            t1.join(); <font color="#0000ff">// 等待t1結束</font>
+            t2.join(); <font color="#0000ff">// 等待t2結束</font>
+        } <font color="#804040"><b>catch</b></font> (InterruptedException e) {}
+        <font color="#804040"><b>for</b></font> (<font color="#2e8b57"><b>int</b></font> i=<font color="#ff00ff">0</font>;i &lt; <font color="#ff00ff">5</font>; i++) {
+            System.out.println(<font color="#ff00ff">"Main Thread"</font>);
+        }
+    }
+}
+</pre>
+<p>觀看sleep的效果</p>
+<pre><font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>class</b></font> SleepExample <font color="#2e8b57"><b>extends</b></font> Thread {
+    String myId;
+    <font color="#2e8b57"><b>public</b></font> SleepExample(String id) {
+        myId = id;
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>void</b></font> run() { <font color="#0000ff">// overwrite Thread's run()</font>
+        <font color="#804040"><b>for</b></font> (<font color="#2e8b57"><b>int</b></font> i=<font color="#ff00ff">0</font>; i &lt; <font color="#ff00ff">500</font>; i++) {
+            System.out.println(myId+<font color="#ff00ff">" Thread"</font>);
+            <font color="#804040"><b>try</b></font> {
+                sleep(<font color="#ff00ff">100</font>);
+            } <font color="#804040"><b>catch</b></font> (InterruptedException e) {}
+        }
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>static</b></font> <font color="#2e8b57"><b>void</b></font> main(String[] argv) {
+        Thread t1 = <font color="#804040"><b>new</b></font> SleepExample(<font color="#ff00ff">"T1"</font>); <font color="#0000ff">// 產生Thread物件</font>
+        Thread t2 = <font color="#804040"><b>new</b></font> SleepExample(<font color="#ff00ff">"T2"</font>); <font color="#0000ff">// 產生Thread物件</font>
+        t1.start(); <font color="#0000ff">// 開始執行t1.run()</font>
+        t2.start();
+    }
+}
+</pre>
+<h3>Critical Section(關鍵時刻)的保護措施</h3>
+<p>如果設計者沒有提供保護機制的話,Thread取得和失去CPU控制權的時機是由作業系統來決定。也就是說Thread可能在執行任何一個<font color="red">機器指令</font>時,被作業系統取走CPU控制權,並交給另一個Thread。由於某些真實世界的動作是不可分割的,例如跨行轉帳X圓由A帳戶到B帳戶,轉帳前後這兩個帳戶的總金額必須相同,但以程式來實作時,卻無法用一個指令就完成,如轉帳可能要寫成下面的這一段程式碼
+</p><pre>if (A &gt;= X) {
+    A = A - X; // 翻譯成3個機器指令LOAD A, SUB X, STORE A
+    B = B +X;
+}
+</pre>
+<p>   如果兩個Thread同時要存取A,B兩帳戶進行轉帳,假設當Thread one執行到SUBX後被中斷,Threadtwo接手執行完成另一個轉帳要求,然後Threadone繼續執行未完成的動作,請問這兩個轉帳動作正確嗎?我們以A=1000,B=0,分別轉帳100,200圓來說明此結果
+</p><pre>    LOAD A // Thread 1, 現在A還是1000
+    SUB 100 // Thread 1
+    LOAD A // 假設此時Thread 1被中斷,Thread 2接手, 因為Thread 1 還沒有執行STORE A, 所以變數A還是1000
+    SUB 200 // Thread 2
+    STORE A // Thread 2, A = 800
+    LOAD B // Thread 2, B現在是0
+    ADD 200 // Thread 2
+    STORE B // B=200
+    STORE A // Thread 1拿回控制權, A = 900
+    LOAD B // Thread 1, B = 200
+    ADD 100 // Thread 1
+    STORE B // B = 300
+</pre>
+<p>你會發現執行完成後A=900,B=300,也就是說銀行平白損失了200圓。當然另外的執行順序可能造成其他不正確的結果。我們把這問題再整理一下:
+</p><ol>
+<li>寫程式時假設指令會循序執行
+</li><li>某些不可分割的動作,需要以多個機器指令來完成
+</li><li>Thread執行時可能在某個機器指令被中斷
+</li><li>兩個Thread可能執行同一段程式碼,存取同一個資料結構
+</li><li>這樣就破壞了第1點的假設</li>
+</ol>
+<p>因此在撰寫多執行緒的程式時,必須特別考慮這種狀況(又稱為race 
+condition)。Java的解決辦法是,JVM會在每個物件上擺一把鎖(lock),然後程式設計者可以宣告執行某一段程式(通常是用來存取共同資料結構的程式碼, 又稱為Critical Section)時,必須拿到某物件的鎖才行,這個鎖同時間最多只有一個執行緒可以擁有它。
+</p><pre><font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>class</b></font> Transfer <font color="#2e8b57"><b>extends</b></font> Thread {
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>static</b></font> Object lock = <font color="#804040"><b>new</b></font> Object();
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>static</b></font> <font color="#2e8b57"><b>int</b></font> A = <font color="#ff00ff">1000</font>;
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>static</b></font> <font color="#2e8b57"><b>int</b></font> B = <font color="#ff00ff">0</font>;
+    <font color="#2e8b57"><b>private</b></font> <font color="#2e8b57"><b>int</b></font> amount;
+    <font color="#2e8b57"><b>public</b></font> Transfer(<font color="#2e8b57"><b>int</b></font> x) {
+        amount = x;
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>void</b></font> run() {
+        <font color="#2e8b57"><b>synchronized</b></font>(lock) { <font color="#0000ff">// 取得lock,如果別的thread A已取得,則目前這個thread會等到thread A釋放該lock</font>
+            <font color="#804040"><b>if</b></font> (A &gt;= amount) {
+                A = A - amount;
+                B = B + amount;
+            }
+        } <font color="#0000ff">// 離開synchronized區塊後,此thread會自動釋放lock</font>
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>static</b></font> <font color="#2e8b57"><b>void</b></font> main(String[] argv) {
+        Thread t1 = <font color="#804040"><b>new</b></font> Transfer(<font color="#ff00ff">100</font>);
+        Thread t2 = <font color="#804040"><b>new</b></font> Transfer(<font color="#ff00ff">200</font>);
+        t1.start();
+        t2.start();
+    }
+}
+
+</pre>
+<p>除了synchronized(ref)的語法可以鎖定ref指到的物件外,synchronized也可以用在object method前面,表示要鎖定this物件才能執行該方法。以下是Queue結構的範例
+</p><pre><font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>class</b></font> Queue {
+    <font color="#2e8b57"><b>private</b></font> Object[] data;
+    <font color="#2e8b57"><b>private</b></font> <font color="#2e8b57"><b>int</b></font> size;
+    <font color="#2e8b57"><b>private</b></font> <font color="#2e8b57"><b>int</b></font> head;
+    <font color="#2e8b57"><b>private</b></font> <font color="#2e8b57"><b>int</b></font> tail;
+    <font color="#2e8b57"><b>public</b></font> Queue(<font color="#2e8b57"><b>int</b></font> maxLen) {
+        data = <font color="#804040"><b>new</b></font> Object[maxLen];
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>synchronized</b></font> Object deQueue() {
+        <font color="red">Object</font> tmp = data[head];
+        data[head] = <font color="#ff00ff">null</font>;
+        head = (head+<font color="#ff00ff">1</font>)%data.length;
+        size--;
+        <font color="#804040"><b>return</b></font> tmp;
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>synchronized</b></font> <font color="#2e8b57"><b>void</b></font> enQueue(Object c) {
+        data[tail++] = c;
+        tail %= data.length;
+        size++;
+    }
+}
+</pre>
+
+<p>雖然上面的程式正確無誤,但並未考慮資源不足時該如何處理。例如Queue已經沒有資料了,卻還想拿出來;或是Queue裡已經塞滿了資料,使用者卻還要放進去?我們當然可以使用Exception Handling的機制:
+</p><pre><font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>class</b></font> Queue {
+    <font color="#2e8b57"><b>private</b></font> Object[] data;
+    <font color="#2e8b57"><b>private</b></font> <font color="#2e8b57"><b>int</b></font> size;
+    <font color="#2e8b57"><b>private</b></font> <font color="#2e8b57"><b>int</b></font> head;
+    <font color="#2e8b57"><b>private</b></font> <font color="#2e8b57"><b>int</b></font> tail;
+    <font color="#2e8b57"><b>public</b></font> Queue(<font color="#2e8b57"><b>int</b></font> maxLen) {
+        data = <font color="#804040"><b>new</b></font> Object[maxLen];
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>synchronized</b></font> Object deQueue() <font color="#2e8b57"><b>throws</b></font> Exception {
+        <font color="#804040"><b>if</b></font> (size == <font color="#ff00ff">0</font>) {
+            <font color="#804040"><b>throw</b></font> <font color="#804040"><b>new</b></font> Exception();
+        }
+        <font color="red">Object</font> tmp = data[head];
+        data[head] = <font color="#ff00ff">null</font>;
+        head = (head+<font color="#ff00ff">1</font>)%data.length;
+        size--;
+        <font color="#804040"><b>return</b></font> tmp;
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>synchronized</b></font> <font color="#2e8b57"><b>void</b></font> enQueue(Object c) <font color="#2e8b57"><b>throws</b></font> Exception {
+        <font color="#804040"><b>if</b></font> (size &gt;= maxLen) {
+            <font color="#804040"><b>throw</b></font> <font color="#804040"><b>new</b></font> Exception();
+        }
+        data[tail++] = c;
+        tail %= data.length;
+        size++;
+    }
+}
+</pre>
+<p>但假設我們的執行環境是,某些Thread專門負責讀取使用者的需求,並把工作放到Queue裡面,某些Thread則專門由Queue裡抓取工作需求做進一步處理。這種架構的好處是,可以把慢速或不定速的輸入(如透過網路讀資料,連線速度可能差很多),和快速的處理分開,可使系統的反應速度更快,更節省資源。那麼以Exceptoin來處理Queue空掉或爆掉的情況並不合適,因為使用Queue的人必須處理例外狀況,並不斷的消耗CPU資源:</p>
+<pre><font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>class</b></font> Getter <font color="#2e8b57"><b>extends</b></font> Thread {
+    Queue q;
+    <font color="#2e8b57"><b>public</b></font> Getter(Queue q) {
+        <font color="#2e8b57"><b>this</b></font>.q = q;
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>void</b></font> run() {
+        <font color="#804040"><b>for</b></font> (;;) {
+            <font color="#804040"><b>try</b></font> {
+                Object data = q.deQueue();
+                <font color="#0000ff">// processing</font>
+            } <font color="#804040"><b>catch</b></font>(Exception e) {
+                <font color="#0000ff">// if we try to sleep here, user may feel slow response</font>
+                <font color="#0000ff">// if we do not sleep, CPU will be wasted</font>
+            }
+        }
+    }
+}
+<font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>class</b></font> Putter <font color="#2e8b57"><b>extends</b></font> Thread {
+    Queue q;
+    <font color="#2e8b57"><b>public</b></font> Putter(Queue q) {
+        <font color="#2e8b57"><b>this</b></font>.q = q;
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>void</b></font> run() {
+        <font color="#804040"><b>for</b></font> (;;) {
+            <font color="#804040"><b>try</b></font> {
+                Object data = <font color="#ff00ff">null</font>;
+                <font color="#0000ff">// get user request</font>
+                 q.enQueue(data);
+            } <font color="#804040"><b>catch</b></font>(Exception e) {
+                <font color="#0000ff">// if we try to sleep here, user may feel slow response</font>
+                <font color="#0000ff">// if we do not sleep, CPU will be wasted</font>
+            }
+        }
+    }
+}
+<font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>class</b></font> Main {
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>static</b></font> <font color="#2e8b57"><b>void</b></font> main(String[] argv) {
+        Queue q = <font color="#804040"><b>new</b></font> Queue(<font color="#ff00ff">10</font>);
+        Getter r1 = <font color="#804040"><b>new</b></font> Getter(q);
+        Getter r2 = <font color="#804040"><b>new</b></font> Getter(q);
+        Putter w1 = <font color="#804040"><b>new</b></font> Putter(q);
+        Putter w2 = <font color="#804040"><b>new</b></font> Putter(q);
+        r1.start();
+        r2.start();
+        w1.start();
+        w2.start();
+    }
+}
+</pre>
+<p>為了解決這類資源分配的問題,Java Object提供了下面三個method:</p>
+<ul>
+<li>wait():使呼叫此方法的Thread進入Blocking Mode,並設為等待該Object, 呼叫wait()時, 該Thread必須擁有該物件的lock。Blocking Mode下的Thread必須釋放所有手中的lock,並且無法使用CPU。
+</li><li>notifyAll():讓等待該Object的所有Thread進入Runnable Mode。
+</li><li>notify():讓等待該Object的某一個Thread進入Runnable Mode。</li> 
+</ul>
+<p>所謂Runnable Mode是指該Thread隨時可由作業系統分配CPU資源。Blocking 
+Mode表示該Thread正在等待某個事件發生,作業系統不會讓這種Thread取得CPU資源。前一個Queue的範例就可以寫成:
+</p><pre><font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>class</b></font> Queue {
+    <font color="#2e8b57"><b>private</b></font> Object[] data;
+    <font color="#2e8b57"><b>private</b></font> <font color="#2e8b57"><b>int</b></font> size;
+    <font color="#2e8b57"><b>private</b></font> <font color="#2e8b57"><b>int</b></font> head;
+    <font color="#2e8b57"><b>private</b></font> <font color="#2e8b57"><b>int</b></font> tail;
+    <font color="#2e8b57"><b>public</b></font> Queue(<font color="#2e8b57"><b>int</b></font> maxLen) {
+        data = <font color="#804040"><b>new</b></font> Object[maxLen];
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>synchronized</b></font> Object deQueue() {
+        <font color="#804040"><b>while</b></font> (size==<font color="#ff00ff">0</font>) { <font color="#0000ff">// When executing here, Thread must have got lock and be in running mode</font>
+            <font color="#0000ff">// Let current Thread wait this object(to sleeping mode)</font>
+            <font color="#804040"><b>try</b></font> {
+                wait(); <font color="#0000ff">// to sleeping mode, and release all lock</font>
+            } <font color="#804040"><b>catch</b></font>(Exception ex) {};
+        }
+        <font color="red">Object</font> tmp = data[head];
+        data[head] = <font color="#ff00ff">null</font>;
+        head = (head+<font color="#ff00ff">1</font>)%data.length;
+        <font color="#804040"><b>if</b></font> (size==data.length) {
+            <font color="#0000ff">// wake up all Threads waiting this object</font>
+            notifyAll();
+        }
+        size--;
+        <font color="#804040"><b>return</b></font> tmp;
+    } <font color="#0000ff">// release lock</font>
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>synchronized</b></font> <font color="#2e8b57"><b>void</b></font> enQueue(Object c) {
+        <font color="#804040"><b>while</b></font> (size==data.length) {  <font color="#0000ff">// When executing here, Thread must have got lock and be in running mode</font>
+            <font color="#0000ff">// Let current thread wait this object(to sleeping mode)</font>
+            <font color="#804040"><b>try</b></font> {
+                wait(); <font color="#0000ff">// to sleeping mode, and release all lock</font>
+            } <font color="#804040"><b>catch</b></font>(Exception ex) {};
+        }
+        data[tail++] = c;
+        tail %= data.length;
+        size++;
+        <font color="#804040"><b>if</b></font> (size==<font color="#ff00ff">1</font>) {
+            <font color="#0000ff">// wake up all Threads waiting this object</font>
+            notifyAll();
+        }
+    }
+}
+
+
+<font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>class</b></font> ReaderWriter <font color="#2e8b57"><b>extends</b></font> Thread {
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>static</b></font> <font color="#2e8b57"><b>final</b></font> <font color="#2e8b57"><b>int</b></font> READER = <font color="#ff00ff">1</font>;
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>static</b></font> <font color="#2e8b57"><b>final</b></font> <font color="#2e8b57"><b>int</b></font> WRITER = <font color="#ff00ff">2</font>;
+    <font color="#2e8b57"><b>private</b></font> Queue q;
+    <font color="#2e8b57"><b>private</b></font> <font color="#2e8b57"><b>int</b></font> mode;
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>void</b></font> run() {
+        <font color="#804040"><b>for</b></font> (<font color="#2e8b57"><b>int</b></font> i=<font color="#ff00ff">0</font>; i &lt; <font color="#ff00ff">1000</font>; i++) {
+            <font color="#804040"><b>if</b></font> (mode==READER) {
+                q.deQueue();
+            } <font color="#804040"><b>else</b></font> <font color="#804040"><b>if</b></font> (mode==WRITER) {
+                q.enQueue(<font color="#804040"><b>new</b></font> Integer(i));
+            }
+        }
+    }
+    <font color="#2e8b57"><b>public</b></font> ReaderWriter(Queue q, <font color="#2e8b57"><b>int</b></font> mode) {
+        <font color="#2e8b57"><b>this</b></font>.q = q;
+        <font color="#2e8b57"><b>this</b></font>.mode = mode;
+    }
+    <font color="#2e8b57"><b>public</b></font> <font color="#2e8b57"><b>static</b></font> <font color="#2e8b57"><b>void</b></font> main(String[] args) {
+        Queue q = <font color="#804040"><b>new</b></font> Queue(<font color="#ff00ff">5</font>);
+        ReaderWriter r1, r2, w1, w2;
+        (w1 = <font color="#804040"><b>new</b></font> ReaderWriter(q, WRITER)).start();
+        (w2 = <font color="#804040"><b>new</b></font> ReaderWriter(q, WRITER)).start();
+        (r1 = <font color="#804040"><b>new</b></font> ReaderWriter(q, READER)).start();
+        (r2 = <font color="#804040"><b>new</b></font> ReaderWriter(q, READER)).start();
+        <font color="#804040"><b>try</b></font> {
+            w1.join(); <font color="#0000ff">// wait until w1 complete</font>
+            w2.join(); <font color="#0000ff">// wait until w2 complete</font>
+            r1.join(); <font color="#0000ff">// wait until r1 complete</font>
+            r2.join(); <font color="#0000ff">// wait until r2 complete</font>
+        } <font color="#804040"><b>catch</b></font>(InterruptedException epp) {
+        }
+    }
+}
+</pre>
+<h3>Multiple Reader-Writer Monitors</h3>
+<p>上一節的Queue資料結構,不論是enQueue()或deQueue()都會更動到Queue的內容。而在許多應用裡,資料結構可以允許同時多個讀一個寫。本節舉出幾個不同的例子,說明多個Reader-Writer時的可能排程法。
+</p><p>Single Reader-Writer, 只同時允許一個執行緒存取</p>
+<pre><font color="blue">public class</font> SingleReaderWriter {
+    <font color="blue">int</font> n; <font color="green">// number of reader and write, 0 or 1</font>
+    <font color="blue">public synchronized void</font> startReading() <font color="blue">throws</font> <font color="red">InterruptedException</font> {
+        <font color="blue">while</font> (n != 0) {
+            wait();
+        }
+        n = 1;
+    }
+    <font color="blue">public synchronized void</font> stopReading() {
+        n = 0;
+        notify();
+    }
+    <font color="blue">public synchronized void</font> startWriting() <font color="blue">throws</font> <font color="red">InterruptedException</font> {
+        <font color="blue">while</font> (n != 0) {
+            wait();
+        }
+        n = 1;
+    }
+    <font color="blue">public synchronized void</font> stopWriting() {
+        n = 0;
+        notify();
+    }
+}
+// 這是一個使用範例, 程式能否正確執行要靠呼叫正確的start和stop
+public class WriterThread extends Thread {
+    SingleReaderWriter srw;
+    public WriterThread(SingleReaderWriter srw) {
+        this.srw = srw;
+    }
+    public void run() {
+        startWring();
+        // insert real job here
+        stopWriting();
+    }
+}
+public class ReaderThread extends Thread {
+    SingleReaderWriter srw;
+    public ReaderThread(SingleReaderWriter srw) {
+        this.srw = srw;
+    }
+    public void run() {
+        startReading();
+        // insert real job here
+        stopReading();
+    }
+}
+public class Test {
+    public static void main(String[] argv) {
+        SingleReaderWriter srw = new SingleReaderWriter;
+        // create four threads
+        (new WriterThread(srw)).start();
+        (new WriterThread(srw)).start();
+        (new ReaderThread(srw)).start();
+        (new ReaderThread(srw)).start();
+    }
+}
+</pre>
+<p>其他可能的策略實作如下:</p>
+<p>Reader優先:</p>
+<pre><font color="blue">public class</font> ReadersPreferredMonitor {
+    <font color="blue">int</font> nr; <font color="green">// The number of threads currently reading, nr &gt; = 0</font>
+    <font color="blue">int</font> nw; <font color="green">// The number of threads currently writing, 0 or 1</font>
+    <font color="blue">int</font> nrtotal; <font color="green">// The number of threads either reading or waiting to read, nrtotal &gt; = nr</font>
+    <font color="blue">int</font> nwtotal; <font color="green">// The number of threads either writing or waiting to write</font>
+    <font color="blue">public synchronized void</font> startReading() <font color="blue">throws</font> <font color="red">InterruptedException</font> {
+        nrtotal++; // 想要read的thread又多了一個
+        <font color="blue">while</font> (nw != 0) { <font color="green">// 還有write thread正在write</font>
+            wait();
+        }
+        nr++; <font color="green">// 正在讀的thread多了一個</font>
+    }
+    <font color="blue">public synchronized void</font> startWriting() <font color="blue">throws</font> <font color="red">InterruptedException</font> {
+        nwtotal++; // 想要寫的thread又多了一個
+        <font color="blue">while</font> (nrtotal+nw != 0) { <font color="green">// 只要有thread想要讀,或是有thread正在寫,禮讓</font>
+            wait();
+        }
+        nw = 1;
+    }
+    <font color="blue">public synchronized void</font> stopReading() {
+        nr--; <font color="green">// 正在讀的少一個</font>
+        nrtotal--; <font color="green">// 想要讀的少一個</font>
+        <font color="blue">if</font> (nrtotal == 0) { <font color="green">// 如果沒有要讀的,叫醒想寫的</font>
+            notify();
+        }
+    }
+    <font color="blue">public synchronized void</font> stopWriting() {
+        nw = 0; // 沒有thread正在寫
+        nwtotal--; // 想寫的少一個
+        notifyAll(); // 叫醒所有想讀和想寫的
+    }
+}
+</pre>
+<p>Writer優先:</p>
+<pre><font color="blue">public class</font> WritersPreferredMonitor {
+    <font color="blue">int</font> nr; <font color="green">// The number of threads currently reading, nr &gt; = 0</font>
+    <font color="blue">int</font> nw; <font color="green">// The number of threads currently writing, 0 or 1</font>
+    <font color="blue">int</font> nrtotal; <font color="green">// The number of threads either reading or waiting to read, nrtotal &gt; = nr</font>
+    <font color="blue">int</font> nwtotal; <font color="green">// The number of threads either writing or waiting to write</font>
+    <font color="blue">public synchronized void</font> startReading() <font color="blue">throws</font> <font color="red">InterruptedException</font> {
+        nrtotal++; <font color="green">// 想要read的thread又多了一個</font>
+        <font color="blue">while</font> (nwtotal != 0) { <font color="green">// 還有thread想要write</font>
+            wait();
+        }
+        nr++; <font color="green">// 正在讀的thread多了一個</font>
+    }
+    <font color="blue">public synchronized void</font> startWriting() <font color="blue">throws</font> <font color="red">InterruptedException</font> {
+        nwtotal++; <font color="green">// 想要寫的thread又多了一個</font>
+        <font color="blue">while</font> (nr+nw != 0) { <font color="green">// 有thread正在讀,或是有thread正在寫</font>
+            wait();
+        }
+        nw = 1;
+    }
+    <font color="blue">public synchronized void</font> stopReading() {
+        nr--; <font color="green">// 正在讀的少一個</font>
+        nrtotal--; <font color="green">// 想要讀的少一個</font>
+        <font color="blue">if</font> (nr == 0) { <font color="green">// 如果沒有正在讀的,叫醒所有的(包括想寫的)</font>
+            notifyAll();
+        }
+    }
+    <font color="blue">public synchronized void</font> stopWriting() {
+        nw = 0; <font color="green">// 沒有thread正在寫</font>
+        nwtotal--; <font color="green">// 想寫的少一個</font>
+        notifyAll(); <font color="green">// 叫醒所有想讀和想寫的</font>
+    }
+}
+</pre>
+<p>Reader和Writer交互執行:</p>
+<pre><font color="blue">public class</font> AlternatingReadersWritersMonitor {
+    <font color="blue">int</font>[] nr = <font color="blue">new int</font>[2]; <font color="green">// The number of threads currently reading</font>
+    <font color="blue">int</font> thisBatch; <font color="green">// Index in nr of the batch of readers currently reading(0 or 1)</font>
+    <font color="blue">int</font> nextBatch = 1; <font color="green">// Index in nr of the batch of readers waitin to read(always 1-thisBatch)</font>
+    <font color="blue">int</font> nw; <font color="green">// The number of threads currently writing(0 or 1)</font>
+    <font color="blue">int</font> nwtotal; <font color="green">// The number of threads either writing or waiting to write</font>
+    <font color="blue">public synchronized void</font> startReading() <font color="blue">throws</font> <font color="red">InterruptedException</font> {
+        <font color="blue">if</font> (nwtotal == 0) { <font color="green">// 沒有thread要write, 將reader都放到目前要處理的這一批</font>
+            nr[thisBatch]++;
+        } <font color="blue">else</font> {
+            nr[nextBatch]++;
+            <font color="blue">int</font> myBatch = nextBatch;
+            <font color="blue">while</font> (thisBatch != myBatch) {
+                wait();
+            }
+        }
+    }
+    <font color="blue">public synchronized void</font> stopReading() {
+        nr[thisBatch]--;
+        <font color="blue">if</font> (nr[thisBatch] == 0) { <font color="green">// 目前這批的reader都讀完了,找下一個writer</font>
+            notifyAll();
+        }
+    }
+    <font color="blue">public synchronized void</font> startWriting() <font color="blue">throws</font> <font color="red">InterruptedException</font> {
+        nwtotal++;
+        <font color="blue">while</font> (nr[thisBatch]+nw != 0) { <font color="green">// 目前這批還沒完,或有thread正在寫</font>
+            wait();
+        }
+        nw = 1;
+    }
+    <font color="blue">public synchronized void</font> stopWriting() {
+        nw = 0;
+        nwtotal--;
+        <font color="blue">int</font> tmp = thisBatch; <font color="green">// 交換下一批要讀的</font>
+        thisBatch = nextBatch;
+        nextBatch = tmp;
+        notifyAll();
+    }
+}
+</pre>
+<p>給號依序執行</p>
+<pre><font color="blue">public class</font> TakeANumberMonitor {
+    <font color="blue">int</font> nr; <font color="green">// The number of threads currently reading</font>
+    <font color="blue">int</font> nextNumber; <font color="green">// The number to be taken by the next thread to arrive</font>
+    <font color="blue">int</font> nowServing; <font color="green">// The number of the thread to be served next</font>
+    <font color="blue">public synchronized void</font> startReading() <font color="blue">throws</font> <font color="red">InterruptedException</font> {
+        <font color="blue">int</font> myNumber = nextNumber++;
+        <font color="blue">while</font> (nowServing != myNumber) { <font color="green">// 還沒輪到我</font>
+            wait();
+        }
+        nr++; <font color="green">// 多了一個Reader</font>
+        nowServing++; <font color="green">// 準備檢查下一個</font>
+        notifyAll();
+    }
+    <font color="blue">public synchronized void</font> startWriting() <font color="blue">throws</font> <font color="red">InterruptedException</font> {
+        <font color="blue">int</font> myNumber = nextNumber++;
+        <font color="blue">while</font> (nowServing != myNumber) { <font color="green">// 還沒輪到我</font>
+            wait();
+        }
+        <font color="blue">while</font> (nr &gt;  0) { <font color="green">// 要等所有的Reader結束</font>
+            wait();
+        }
+    }
+    <font color="blue">public synchronized void</font> stopReading() {
+        nr--; // 少了一個Reader
+        <font color="blue">if</font> (nr == 0) {
+            notifyAll();
+        }
+    }
+    <font color="blue">public synchronized void</font> stopWriting() {
+        nowServing++; <font color="green">// 準備檢查下一個</font>
+        notifyAll();
+    }
+}
+</pre>
+
+</body></html>
